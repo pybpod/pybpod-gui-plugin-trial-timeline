@@ -20,12 +20,12 @@ from AnyQt.QtCore    import QTimer
 #######################################################################
 ##### MESSAGES TYPES ##################################################
 #######################################################################
-from pybranch.com.messaging.error   import ErrorMessage
-from pybranch.com.messaging.debug   import DebugMessage
-from pybranch.com.messaging.stderr  import StderrMessage
-from pybranch.com.messaging.stdout  import StdoutMessage
-from pybranch.com.messaging.warning import WarningMessage
-from pybranch.com.messaging.parser  import MessageParser
+from pybpodapi.com.messaging.error   import ErrorMessage
+from pybpodapi.com.messaging.debug   import DebugMessage
+from pybpodapi.com.messaging.stderr  import StderrMessage
+from pybpodapi.com.messaging.stdout  import StdoutMessage
+from pybpodapi.com.messaging.warning import WarningMessage
+from pybpodapi.com.messaging.parser  import MessageParser
 
 from pybpodapi.com.messaging.trial                  import Trial
 from pybpodapi.com.messaging.end_trial              import EndTrial
@@ -69,8 +69,6 @@ class TrialTimeline(BaseWidget):
         axes.clear()
         offset = np.zeros(len(self.graph_x))
         for i in range(len(self.graphdata)):
-            print(self.graph_x,self.graphdata[i])
-            print(self.coloring[i])
             axes.barh(self.graph_x,self.graphdata[i],height=0.8,color=self.coloring[i],left=offset, label = self.graph_y[i])
             offset = offset + self.graphdata[i]
         #axes.yticks(self.graph_x,self.graph_xl)
@@ -85,7 +83,7 @@ class TrialTimeline(BaseWidget):
         if self._timer.isActive():
             self._timer.stop()
         else:
-            self._timer.start(100)
+            self._timer.start(10000)
 
     
     def show(self, detached = False):
@@ -94,7 +92,6 @@ class TrialTimeline(BaseWidget):
         
         # Prevent the call to be recursive because of the mdi_area
         if not detached:
-            print('calling trial timeline')
             if hasattr(self, '_show_called'):
                 BaseWidget.show(self)
                 return
@@ -102,29 +99,24 @@ class TrialTimeline(BaseWidget):
             self.mainwindow.mdi_area += self
             del self._show_called
         else:
-            print('calling trial timeline (DETACHED)')
             BaseWidget.show(self)
         self.update()
 
     def read_data(self):
-        for i in range(1):
-            if self._read < len(self.session.messages_history):
-                self.messages.append(self.session.messages_history[self._read])
-                self._read = self._read + 1
-
+        
+        self.messages = self.session.messages_history[self._read:]
         ''' Loop throug all the messages and structure them so we can know 
             the number of trials and states per trial'''
         
         # Control variables to know how to group incoming data
         getting_trial = False
 
-        trialstates = []
         self.trial_list = []
-        filteredstates = []
+        trialstates     = []
+        filteredstates  = []
 
         for msg in self.messages:
             if msg.MESSAGE_TYPE_ALIAS == Trial.MESSAGE_TYPE_ALIAS:
-                print('TRIAL')
                 getting_trial = False
                 filteredstates = []
             elif msg.MESSAGE_TYPE_ALIAS == StateOccurrence.MESSAGE_TYPE_ALIAS:
@@ -132,7 +124,6 @@ class TrialTimeline(BaseWidget):
                     getting_trial = True                    
                 trialstates.append(msg)
             elif msg.MESSAGE_TYPE_ALIAS == EndTrial.MESSAGE_TYPE_ALIAS:
-                print('END TRIAL')
                 getting_trial = False
                 filteredstates = []
             else:
@@ -140,16 +131,11 @@ class TrialTimeline(BaseWidget):
                 filteredstates = []
             
             if getting_trial == False and len(trialstates) > 0:
-                print('compiling trial')
                 for i in range(len(trialstates)):
-                    print(trialstates[i])
                     if i == 0:
                         filteredstates.append(trialstates[i])
                     else:
-                        #print('plim')
-                        #print(filteredstates[len(filteredstates)-1][4])
                         if trialstates[i].content == filteredstates[len(filteredstates) - 1].content:
-                            #print('equal',trialstates[i].tolist()[4],filteredstates[len(filteredstates) - 1][4])
                             filteredstates[len(filteredstates) - 1].end_timestamp = trialstates[i].end_timestamp
                         else:
                             filteredstates.append(trialstates[i])
@@ -158,18 +144,15 @@ class TrialTimeline(BaseWidget):
                 
                 trialstates = []
                 filteredstates = []
+
+            self._read += 1
         
         if len(trialstates) > 0:
-            print('compiling trial')
             for i in range(len(trialstates)):
-                print(trialstates[i])
                 if i == 0:
                     filteredstates.append(trialstates[i])
                 else:
-                    #print('plim')
-                    #print(filteredstates[len(filteredstates)-1][4])
                     if trialstates[i].content == filteredstates[len(filteredstates) - 1].content:
-                        #print('equal',trialstates[i].tolist()[4],filteredstates[len(filteredstates) - 1][4])
                         filteredstates[len(filteredstates) - 1].end_timestamp = trialstates[i].end_timestamp
                     else:
                         filteredstates.append(trialstates[i])
@@ -190,9 +173,7 @@ class TrialTimeline(BaseWidget):
         self.graph_y = []
         if self.numtrials > 0:
             self.numstates = len(self.trial_list[0])
-        #print('trials',trial_list)
-        #print('numtrials',numtrials)
-        #print('numstates',numstates)
+        
         self.graphdata = np.zeros((self.numstates,self.numtrials))
         for i in range(len(self.trial_list)):
             self.graph_x.append(i)

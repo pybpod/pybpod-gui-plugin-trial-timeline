@@ -12,7 +12,7 @@ __status__ = "Development"
 from pyforms import conf
 
 conf += 'pybpodgui_plugin_trial_timeline.settings'
-conf += 'pybpodgui_plugin_trial_timeline.resources'
+#conf += 'pybpodgui_plugin_trial_timeline.resources'
 
 
 import loggingbootstrap
