@@ -1,6 +1,7 @@
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import random
 
 from pyforms import conf
@@ -15,7 +16,8 @@ from pyforms.controls import ControlList
 from pyforms.controls import ControlBoundingSlider
 from pyforms.controls import ControlMatplotlib
 from AnyQt.QtWidgets import QApplication
-from AnyQt.QtCore    import QTimer
+from AnyQt.QtGui import QColor, QBrush
+from AnyQt.QtCore import QTimer, QEventLoop, QAbstractTableModel, Qt, QSize, QVariant, pyqtSignal
 
 #######################################################################
 ##### MESSAGES TYPES ##################################################
@@ -37,9 +39,11 @@ from pybpodapi.com.messaging.session_info           import SessionInfo
 #######################################################################
 #######################################################################
 
+from pybpodgui_api.models.session import Session
+
 class TrialTimeline(BaseWidget):
 
-    def __init__(self, session):
+    def __init__(self, session : Session):
         BaseWidget.__init__(self, session.name)
 
         self.session = session
@@ -53,13 +57,20 @@ class TrialTimeline(BaseWidget):
         self.messages = []
         self._timer = QTimer()
         self._timer.timeout.connect(self.update)
-
+        
         self._read = 0
 
         self.formset = [
 			'_reload',
 			'_graph'			
 		]
+
+        self.msgtype = 0
+        self.pctime = 1
+        self.initialtime = 2
+        self.finaltime = 3
+        self.messagecontent = 4
+        self.info = 5
 
         self._graph.on_draw = self.__on_draw_evt
         self._reload.value = self.__reload_evt
@@ -102,9 +113,16 @@ class TrialTimeline(BaseWidget):
             BaseWidget.show(self)
         self.update()
 
+    def to_struct(self,datarow):
+        return
+
     def read_data(self):
         
-        self.messages = self.session.messages_history[self._read:]
+        print(self.session.data)
+        
+        #self.messages = self.session.messages_history[self._read:]
+        
+        #print(self.messages)
         ''' Loop throug all the messages and structure them so we can know 
             the number of trials and states per trial'''
         
@@ -115,15 +133,20 @@ class TrialTimeline(BaseWidget):
         trialstates     = []
         filteredstates  = []
 
-        for msg in self.messages:
-            if msg.MESSAGE_TYPE_ALIAS == Trial.MESSAGE_TYPE_ALIAS:
+        for msg in self.session.data.values:
+            if msg[self.msgtype] == Trial.MESSAGE_TYPE_ALIAS:
                 getting_trial = False
                 filteredstates = []
-            elif msg.MESSAGE_TYPE_ALIAS == StateOccurrence.MESSAGE_TYPE_ALIAS:
-                if not getting_trial:
-                    getting_trial = True                    
-                trialstates.append(msg)
-            elif msg.MESSAGE_TYPE_ALIAS == EndTrial.MESSAGE_TYPE_ALIAS:
+            elif msg[self.msgtype] == StateOccurrence.MESSAGE_TYPE_ALIAS:
+                #if not getting_trial:
+                getting_trial = True                    
+                temp = StateOccurrence(msg[self.msgtype],msg[self.initialtime],msg[self.finaltime])
+                #temp.start_timestamp = msg[self.initialtime]
+                #temp.end_timestamp = mgs[self.finaltime]
+                print(msg[self.messagecontent])
+                temp.content = msg[self.messagecontent]
+                trialstates.append(temp)
+            elif msg[self.msgtype] == EndTrial.MESSAGE_TYPE_ALIAS:
                 getting_trial = False
                 filteredstates = []
             else:
