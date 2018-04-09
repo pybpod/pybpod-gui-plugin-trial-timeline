@@ -117,16 +117,6 @@ class TrialTimeline(BaseWidget):
         return
 
     def read_data(self):
-        
-        print(self.session.data)
-        
-        #self.messages = self.session.messages_history[self._read:]
-        
-        #print(self.messages)
-        ''' Loop throug all the messages and structure them so we can know 
-            the number of trials and states per trial'''
-        
-        # Control variables to know how to group incoming data
         getting_trial = False
 
         self.trial_list = []
@@ -138,12 +128,8 @@ class TrialTimeline(BaseWidget):
                 getting_trial = False
                 filteredstates = []
             elif msg[self.msgtype] == StateOccurrence.MESSAGE_TYPE_ALIAS:
-                #if not getting_trial:
                 getting_trial = True                    
                 temp = StateOccurrence(msg[self.msgtype],msg[self.initialtime],msg[self.finaltime])
-                #temp.start_timestamp = msg[self.initialtime]
-                #temp.end_timestamp = mgs[self.finaltime]
-                print(msg[self.messagecontent])
                 temp.content = msg[self.messagecontent]
                 trialstates.append(temp)
             elif msg[self.msgtype] == EndTrial.MESSAGE_TYPE_ALIAS:
