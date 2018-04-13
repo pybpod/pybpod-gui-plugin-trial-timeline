@@ -23,7 +23,7 @@ class SessionTreeNode(object):
             item=self.node
             )
 
-        self.trialtimeline_action = tree.add_popup_menu_option(
+        self.trialtimeline_detached_action = tree.add_popup_menu_option(
             'Trial Timeline (Detached)', 
             self.open_trialtimeline_window_detached,
             item=self.node
@@ -32,8 +32,8 @@ class SessionTreeNode(object):
         return node
 
     def open_trialtimeline_window(self):
-        # little helper so we can load the events from the csv
-        super(SessionTreeNode, self).node_double_clicked_event()
+        
+        self.load_contents()
 
         print('opening trial timeline')
         if not hasattr(self,'trial_timeline_win'):
@@ -43,9 +43,9 @@ class SessionTreeNode(object):
             self.trial_timeline_win.show()
     
     def open_trialtimeline_window_detached(self):
-        # little helper so we can load the events from the csv
-        super(SessionTreeNode, self).node_double_clicked_event()
         
+        self.load_contents()
+
         print('opening trial timeline (DETACHED)')
         if not hasattr(self,'trial_timeline_win'):
             self.trial_timeline_win = TrialTimeline(self)
