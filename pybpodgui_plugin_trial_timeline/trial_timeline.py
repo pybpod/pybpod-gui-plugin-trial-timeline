@@ -6,8 +6,6 @@ import random
 
 from pyforms import conf
 
-from pyforms import conf
-
 from pyforms import BaseWidget
 from pyforms.controls import ControlProgress
 from pyforms.controls import ControlButton
@@ -59,9 +57,9 @@ class TrialTimeline(BaseWidget):
         self._timer.timeout.connect(self.update)
         
         self._read = 0
+        self.i = 0
 
         self.formset = [
-			'_reload',
 			'_graph'			
 		]
 
@@ -90,11 +88,12 @@ class TrialTimeline(BaseWidget):
 
     
     def __reload_evt(self):
+        return
         #self.update()
         if self._timer.isActive():
             self._timer.stop()
         else:
-            self._timer.start(10000)
+            self._timer.start(conf.TRIALTIMELINE_PLUGIN_REFRESH_RATE)
 
     
     def show(self, detached = False):
@@ -111,7 +110,16 @@ class TrialTimeline(BaseWidget):
             del self._show_called
         else:
             BaseWidget.show(self)
+        
+        self._stop = False # flag used to close the gui in the middle of a loading
+        if not self._stop and self.session.is_running:
+            self._timer.start(conf.TRIALTIMELINE_PLUGIN_REFRESH_RATE)
+
         self.update()
+
+    def hide(self):
+        self._timer.stop()
+        self._stop = True
 
     def to_struct(self,datarow):
         return
@@ -195,9 +203,14 @@ class TrialTimeline(BaseWidget):
 
     '''Takes care of all the session data and transforms it in a graph to be shown in the GUI'''
     def update(self):
+        if not self.session.is_running:
+            self._timer.stop()
+            print('stoped counter')
+        print('updating',self.i)
         self.read_data()
         self.data_to_graph()
         self._graph.draw()
+        self.i = self.i + 1
     
     @property
     def mainwindow(self):
