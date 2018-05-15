@@ -115,7 +115,10 @@ class TrialTimeline(BaseWidget):
 
     def read_data(self):
         
-        for msg in self.session.data.values[self._read:]:
+        res = self.session.data.query("TYPE in ['END-TRIAL', 'STATE'] or (TYPE == 'INFO' and MSG in ['SESSION-ENDED','TRIAL-BPOD-TIME'])")
+
+        for index, msg in res.iterrows():
+            if index<=self._read: continue
             
             if msg[self.COL_MSGTYPE] == EndTrial.MESSAGE_TYPE_ALIAS:
                 
@@ -155,7 +158,7 @@ class TrialTimeline(BaseWidget):
                 self._last_trial_end = trial_end            
 
 
-            self._read += 1
+            self._read = index
         
 
         

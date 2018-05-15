@@ -36,7 +36,7 @@ class SessionTreeNode(object):
         self.load_contents()
 
         #does not show the window if the detached window is visible
-        if hasattr(self, 'trial_timeline_win_detached') and self.trial_timeline_win.visible: return 
+        if hasattr(self, 'trial_timeline_win_detached') and self.trial_timeline_win_detached.visible: return 
 
         if not hasattr(self,'trial_timeline_win'):
             self.trial_timeline_win = TrialTimeline(self)
@@ -48,6 +48,7 @@ class SessionTreeNode(object):
         
         self.load_contents()
 
+        if hasattr(self, 'trial_timeline_win') and self.trial_timeline_win.visible: return 
      
         if not hasattr(self,'trial_timeline_win_detached'):
             self.trial_timeline_win_detached = TrialTimeline(self)
