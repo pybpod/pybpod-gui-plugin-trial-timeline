@@ -35,7 +35,6 @@ class SessionTreeNode(object):
         
         self.load_contents()
 
-        print('opening trial timeline')
         if not hasattr(self,'trial_timeline_win'):
             self.trial_timeline_win = TrialTimeline(self)
             self.trial_timeline_win.show()

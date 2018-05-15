@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 class SubjectTreeNode(object):
 
     def create_sessiontreenode(self, session):
-        print('trial timeline session treenode creating stuff')
         node = super(SubjectTreeNode, self).create_sessiontreenode(session)
 
         self.trialtimeline_action = self.tree.add_popup_menu_option(

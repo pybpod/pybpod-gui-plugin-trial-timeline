@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import random
+import traceback
 
 from pyforms import conf
 
@@ -36,60 +37,51 @@ from pybpodapi.com.messaging.event_resume           import EventResume
 from pybpodapi.com.messaging.session_info           import SessionInfo
 #######################################################################
 #######################################################################
-
+from pybpodapi.session import Session as APISession
 from pybpodgui_api.models.session import Session
+
+from matplotlib import colors as mcolors
 
 class TrialTimeline(BaseWidget):
 
+    COL_MSGTYPE   = 0
+    COL_PCTIME    = 1
+    COL_INITTIME  = 2
+    COL_FINALTIME = 3
+    COL_MSG       = 4
+    COL_INFO      = 5
+
     def __init__(self, session : Session):
         BaseWidget.__init__(self, session.name)
+        self.set_margin(5)
 
         self.session = session
 
-        self.set_margin(5)
+        self._reload = ControlButton('Reload')
+        self._graph  = ControlMatplotlib('Value')
 
-        self._reload      = ControlButton('Reload everything')
-        self._graph 		= ControlMatplotlib('Value')
-
-        self.coloring = ['red','blue','green','yellow']
-        self.messages = []
         self._timer = QTimer()
         self._timer.timeout.connect(self.update)
         
         self._read = 0
-        self.i = 0
+        self._deltas = None
 
+        self._last_trial_end = None
+        
+        self._states_dict = {}
+        self._trials_list = []
+        
         self.formset = [
-			'_graph'			
-		]
-
-        self.msgtype = 0
-        self.pctime = 1
-        self.initialtime = 2
-        self.finaltime = 3
-        self.messagecontent = 4
-        self.info = 5
-
+            '_graph'            
+        ]
+        self.colors = list(mcolors.CSS4_COLORS.values())
+        
         self._graph.on_draw = self.__on_draw_evt
         self._reload.value = self.__reload_evt
 
-    def __on_draw_evt(self, figure):
-        axes = figure.add_subplot(111)
-        axes.clear()
-        offset = np.zeros(len(self.graph_x))
-        for i in range(len(self.graphdata)):
-            axes.barh(self.graph_x,self.graphdata[i],height=0.8,color=self.coloring[i],left=offset, label = self.graph_y[i])
-            offset = offset + self.graphdata[i]
-        #axes.yticks(self.graph_x,self.graph_xl)
-        axes.set_ylabel('Trials')
-        axes.set_xlabel('Time (sec)')
-        axes.legend(loc="upper right")
-        self._graph.repaint()
-
+    
     
     def __reload_evt(self):
-        return
-        #self.update()
         if self._timer.isActive():
             self._timer.stop()
         else:
@@ -121,96 +113,117 @@ class TrialTimeline(BaseWidget):
         self._timer.stop()
         self._stop = True
 
-    def to_struct(self,datarow):
-        return
-
     def read_data(self):
-        getting_trial = False
-
-        self.trial_list = []
-        trialstates     = []
-        filteredstates  = []
-
-        for msg in self.session.data.values:
-            if msg[self.msgtype] == Trial.MESSAGE_TYPE_ALIAS:
-                getting_trial = False
-                filteredstates = []
-            elif msg[self.msgtype] == StateOccurrence.MESSAGE_TYPE_ALIAS:
-                getting_trial = True                    
-                temp = StateOccurrence(msg[self.msgtype],msg[self.initialtime],msg[self.finaltime])
-                temp.content = msg[self.messagecontent]
-                trialstates.append(temp)
-            elif msg[self.msgtype] == EndTrial.MESSAGE_TYPE_ALIAS:
-                getting_trial = False
-                filteredstates = []
-            else:
-                getting_trial = False
-                filteredstates = []
+        
+        for msg in self.session.data.values[self._read:]:
             
-            if getting_trial == False and len(trialstates) > 0:
-                for i in range(len(trialstates)):
-                    if i == 0:
-                        filteredstates.append(trialstates[i])
-                    else:
-                        if trialstates[i].content == filteredstates[len(filteredstates) - 1].content:
-                            filteredstates[len(filteredstates) - 1].end_timestamp = trialstates[i].end_timestamp
-                        else:
-                            filteredstates.append(trialstates[i])
+            if msg[self.COL_MSGTYPE] == EndTrial.MESSAGE_TYPE_ALIAS:
                 
-                self.trial_list.append(filteredstates)
+                if self._deltas is not None:
+                    self._trials_list.append(self._deltas)
+                self._deltas = {}
                 
-                trialstates = []
-                filteredstates = []
+            elif msg[self.COL_MSGTYPE] == StateOccurrence.MESSAGE_TYPE_ALIAS:
+
+                state = msg[self.COL_MSG]
+                delta = float(msg[self.COL_FINALTIME]) - float(msg[self.COL_INITTIME])
+
+                if state not in self._deltas:
+                    # count, delta sum, min delta, max delta
+                    self._deltas[state] = [delta]
+                    self._states_dict[state] = True
+                else:
+                    self._deltas[state].append(delta)
+
+            elif msg[self.COL_MSGTYPE] == SessionInfo.MESSAGE_TYPE_ALIAS and \
+                 msg[self.COL_MSG]     == APISession.INFO_SESSION_ENDED:
+
+                if self._deltas is not None:
+                    self._trials_list.append(self._deltas)
+
+            elif msg[self.COL_MSGTYPE] == SessionInfo.MESSAGE_TYPE_ALIAS and \
+                 msg[self.COL_MSG] == APISession.INFO_TRIAL_BPODTIME:
+                
+                trial_start = msg[self.COL_INITTIME]
+                trial_end   = msg[self.COL_FINALTIME]
+
+                if self._last_trial_end is not None:
+                    delta                             = float(trial_start)-float(self._last_trial_end)
+                    self._deltas['Init lagging']      = [delta]
+                    self._states_dict['Init lagging'] = True
+
+                self._last_trial_end = trial_end            
+
 
             self._read += 1
         
-        if len(trialstates) > 0:
-            for i in range(len(trialstates)):
-                if i == 0:
-                    filteredstates.append(trialstates[i])
-                else:
-                    if trialstates[i].content == filteredstates[len(filteredstates) - 1].content:
-                        filteredstates[len(filteredstates) - 1].end_timestamp = trialstates[i].end_timestamp
-                    else:
-                        filteredstates.append(trialstates[i])
+
+        
+
+
+    def __on_draw_evt(self, figure):
+
+        try:
+            axes = figure.add_subplot(111)
+            axes.clear()
+
+            trials_labels  = []
+            states_labels  = list(self._states_dict.keys())
+
+            num_states = len(self._states_dict)
+            num_trials = len(self._trials_list)
+            data       = np.zeros( (num_states, num_trials) )
+            errors     = np.zeros( (num_states, num_trials) )
             
-            self.trial_list.append(filteredstates)
+            for i, states in enumerate(self._trials_list):
+                trials_labels.append( 'Trial {0}'.format(i) )
+
+                for j, state_label in enumerate(states_labels):
+
+                    state_data = states.get(state_label, None)
+
+                    if state_data is not None:
+                        data[j][i]   = np.mean(state_data)
+                        errors[j][i] = np.std(state_data)
+
+            colors         = {}
+            offset         = np.zeros( len(trials_labels) )
+            trials_indexes = np.array(range(len(trials_labels)))
+
+            for i, states_data in enumerate(data):
+                if len(states_data)==0: continue
+
+                state_label = states_labels[i]
+                if state_label not in colors:
+                    colors[state_label] = self.colors[len(colors)]
+
+                axes.barh(
+                    trials_indexes,
+                    states_data,
+                    height = 0.8,
+                    color  = colors[state_label],
+                    left   = offset,
+                    label  = state_label,
+                    yerr   = errors[i]
+                )
+                offset = offset + states_data
             
-            trialstates = []
-            filteredstates = []
+            axes.set_yticks(trials_indexes)
+            axes.set_yticklabels(trials_labels)
+            axes.set_ylabel('Trials')
+            axes.set_xlabel('Time (sec)')
+            axes.legend(loc="upper right")
+            self._graph.repaint()
+        except:
+            self.critical( traceback.format_exc(), 'An error occurred')
 
-        
-        
-
-    def data_to_graph(self):
-        self.numtrials = len(self.trial_list)
-        self.numstates = 0
-        self.graph_x = []
-        self.graph_xl = []
-        self.graph_y = []
-        if self.numtrials > 0:
-            self.numstates = len(self.trial_list[0])
-        
-        self.graphdata = np.zeros((self.numstates,self.numtrials))
-        for i in range(len(self.trial_list)):
-            self.graph_x.append(i)
-            self.graph_xl.append('trial '+str(i))
-            for j in range(len(self.trial_list[i])):
-                if i == 0:
-                    self.graph_y.append(self.trial_list[i][j].content)
-                self.graphdata[j][i] = (float(self.trial_list[i][j].end_timestamp)) - float(self.trial_list[i][j].start_timestamp)
-                #  + random.uniform(0,0.5)
-
+                
     '''Takes care of all the session data and transforms it in a graph to be shown in the GUI'''
     def update(self):
         if not self.session.is_running:
             self._timer.stop()
-            print('stoped counter')
-        print('updating',self.i)
         self.read_data()
-        self.data_to_graph()
         self._graph.draw()
-        self.i = self.i + 1
     
     @property
     def mainwindow(self):
