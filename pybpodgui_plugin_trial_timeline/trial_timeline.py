@@ -5,7 +5,7 @@ import pandas as pd
 import random
 import traceback
 
-from pyforms import conf
+from confapp import conf
 
 from pyforms import BaseWidget
 from pyforms.controls import ControlProgress

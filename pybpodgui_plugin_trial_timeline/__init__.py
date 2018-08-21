@@ -9,7 +9,7 @@ __maintainer__ = ["Sérgio Copeto", "Ricardo Ribeiro"]
 __email__ = ["ricardojvr@gmail.com"]
 __status__ = "Development"
 
-from pyforms import conf
+from confapp import conf
 
 conf += 'pybpodgui_plugin_trial_timeline.settings'
 #conf += 'pybpodgui_plugin_trial_timeline.resources'
