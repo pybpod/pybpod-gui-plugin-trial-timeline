@@ -7,7 +7,7 @@ import traceback
 
 from confapp import conf
 
-from pyforms import BaseWidget
+from pyforms.basewidget import BaseWidget
 from pyforms.controls import ControlProgress
 from pyforms.controls import ControlButton
 from pyforms.controls import ControlCheckBox
