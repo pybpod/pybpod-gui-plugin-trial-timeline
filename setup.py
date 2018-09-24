@@ -16,7 +16,7 @@ setup(
 	author='Sérgio Copeto',
 	author_email='sergio.copeto@research.fchampalimaud.org',
 	license='Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>',
-	url='nowhere to be found yet',
+	url='https://bitbucket.org/fchampalimaud/pybpod-gui-plugin-trial-timeline/',
 
 	include_package_data=True,
 	packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples', 'deploy', 'reports']),
